@@ -49,6 +49,7 @@ class ProcessInput {
 
     int opOrder = 0;
     bool rightAfterOp = false;
+    bool rightAfterClosingParentheses = false;
 
     func_ptr getOperation(const char c) {
         switch (c) {
@@ -68,7 +69,7 @@ class ProcessInput {
                 return pow;
                 break;
             default:
-                throwError("invalid operation");
+                throwError(c + string("is not a valid operation"));
                 break;
         }
     }
@@ -89,7 +90,7 @@ class ProcessInput {
 
     void decreasePriority() {
         if (priorities[add] - 3 < 0) {
-            throwError("too many closing parentheses");
+            throwError(string("too many closing parentheses, cannot set priority to ") + to_string(priorities[add] - 3));
         }
         for (auto&[operation, priority] : priorities) {
             priority -= 3;
@@ -101,12 +102,17 @@ class ProcessInput {
         ops[priority][opOrder] = operation;
         opOrder++;
         rightAfterOp = true;
+        rightAfterClosingParentheses = false;
     }
 
     public:
     void processInput() {
         for (int i = 0; i < input.length(); i++) {
             if (isdigit(input[i])) {
+                if (rightAfterClosingParentheses) {
+                    handleEndOfNum();
+                    addOperationToVector(multiply);
+                }
                 numString += input[i];
                 rightAfterOp = false;
                 continue;
@@ -126,7 +132,7 @@ class ProcessInput {
                     increasePriority();
                     continue;
                 }
-                throwError("back to back operations");
+                throwError(string("back to back operations, ") + input[i] + string(" is invalid"));
             }
             if (input[i] == '(') {
                 if (!numString.empty()) {
@@ -138,10 +144,7 @@ class ProcessInput {
             }
             if (input[i] == ')') {
                 decreasePriority();
-                if (!numString.empty()) {
-                    handleEndOfNum();
-                    addOperationToVector(multiply);
-                }
+                rightAfterClosingParentheses = true;
                 continue;
             }
             if (!numString.empty()) handleEndOfNum();
@@ -182,6 +185,10 @@ class DoCalculations {
     void doCalculations() {
         for (int priority = ops.size() - 1; priority >= 0; priority--) {
             for (auto&[index, operation] : ops[priority]) {
+                for (double n : nums) {
+                    cout << n << ' ';
+                }
+                cout << '\n';
                 int shift = calculateShift(index);
                 int realIndex = index - shift;
                 doOperation(realIndex, operation);
