@@ -1,0 +1,1 @@
+cout << curNums[0] << endl;
