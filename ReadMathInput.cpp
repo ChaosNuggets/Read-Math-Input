@@ -48,7 +48,7 @@ class ProcessInput {
     };
 
     int opOrder = 0;
-    bool rightAfterOp = false;
+    bool rightAfterOp = true;
     bool rightAfterClosingParentheses = false;
 
     func_ptr getOperation(const char c) {
@@ -108,7 +108,7 @@ class ProcessInput {
     public:
     void processInput() {
         for (int i = 0; i < input.length(); i++) {
-            if (isdigit(input[i])) {
+            if (isdigit(input[i]) || input[i] == '.') {
                 if (rightAfterClosingParentheses) {
                     handleEndOfNum();
                     addOperationToVector(multiply);
@@ -205,6 +205,7 @@ int main() {
     getline(cin, input);
     p.processInput();
     d.doCalculations();
+    cout.precision(12);
     cout << "answer: " << nums[0] << endl;
     cout << "Press enter to exit";
     cin.ignore();
