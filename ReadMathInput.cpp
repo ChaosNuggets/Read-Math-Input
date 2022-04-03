@@ -9,10 +9,7 @@ using namespace std;
 
 typedef double (*func_ptr)(const double, const double);
 
-string input;
-string numString;
-vector<double> nums;
-vector<map<int, func_ptr>> ops(3, map<int, func_ptr>());
+int i;
 
 double add(const double x, const double y) {
     return x+y;
@@ -30,14 +27,70 @@ double divide(const double x, const double y) {
     return x/y;
 }
 
-void throwError(string error) {
-    cout << "Error: " << error << '\n';
+void waitForEnterKey() {
     cout << "Press enter to exit";
     cin.ignore();
+}
+
+void throwError(string error) {
+    cout << "Error at index " << i << ": " << error << '\n';
+    waitForEnterKey();
     throw runtime_error(error);
 }
 
-class ProcessInput {
+class DoCalculations {
+    protected:
+    vector<double> nums;
+    vector<map<int, func_ptr>> ops;
+
+    private:
+    vector<int> deletedIndexes;
+
+    int calculateShift(int index) {
+        int shift = 0;
+        bool hasBeenInserted = false;
+        for (int k = 0; k < deletedIndexes.size(); k++) {
+            if (deletedIndexes[k] <= index) shift++;
+            else {
+                deletedIndexes.insert(deletedIndexes.begin() + k, index + 1); //Insert at index k 1+ the index because the num to the right gets deleted after calcultions
+                hasBeenInserted = true;
+                break;
+            }
+        }
+        if (!hasBeenInserted) {
+            deletedIndexes.push_back(index + 1);
+        }
+        return shift;
+    }
+
+    void doOperation(int realIndex, func_ptr operation) {
+        nums[realIndex] = operation(nums[realIndex], nums[realIndex + 1]);
+        nums.erase(nums.begin() + realIndex + 1);
+    }
+
+    protected:
+    void doCalculations() {
+        for (int priority = ops.size() - 1; priority >= 0; priority--) {
+            for (auto&[index, operation] : ops[priority]) {
+                int shift = calculateShift(index);
+                int realIndex = index - shift;
+                doOperation(realIndex, operation);
+            }
+        }
+    }
+};
+
+class InputHandler : DoCalculations {
+    private:
+    string numString;
+    string input;
+
+    public:
+    InputHandler(string input) {
+        this->input = input;
+        ops.resize(3);
+    }
+
     private:
     unordered_map<func_ptr, int> priorities = {
         {add, 0},
@@ -51,7 +104,7 @@ class ProcessInput {
     bool rightAfterOp = true;
     bool rightAfterClosingParentheses = false;
 
-    func_ptr getOperation(const char c) {
+    func_ptr getOperation(const char c) const {
         switch (c) {
             case '+':
                 return add;
@@ -69,7 +122,7 @@ class ProcessInput {
                 return pow;
                 break;
             default:
-                throwError(c + string("is not a valid operation"));
+                throwError(c + string(" is not a valid operation"));
                 break;
         }
     }
@@ -83,14 +136,14 @@ class ProcessInput {
         for (auto&[operation, priority] : priorities) {
             priority += 3;
         }
-        if (priorities[pow] > ops.size()-1) {
-            ops.resize(priorities[pow]+1);
+        if (priorities.at(pow) > ops.size()-1) {
+            ops.resize(priorities.at(pow)+1);
         }
     }
 
     void decreasePriority() {
-        if (priorities[add] - 3 < 0) {
-            throwError(string("too many closing parentheses, cannot set priority to ") + to_string(priorities[add] - 3));
+        if (priorities.at(add) - 3 < 0) {
+            throwError(string("too many closing parentheses"));
         }
         for (auto&[operation, priority] : priorities) {
             priority -= 3;
@@ -98,7 +151,7 @@ class ProcessInput {
     }
 
     void addOperationToVector(func_ptr operation) {
-        int priority = priorities[operation];
+        int priority = priorities.at(operation);
         ops[priority][opOrder] = operation;
         opOrder++;
         rightAfterOp = true;
@@ -107,7 +160,7 @@ class ProcessInput {
 
     public:
     void processInput() {
-        for (int i = 0; i < input.length(); i++) {
+        for (i = 0; i < input.length(); i++) {
             if (isdigit(input[i]) || input[i] == '.') {
                 if (rightAfterClosingParentheses) {
                     handleEndOfNum();
@@ -153,61 +206,23 @@ class ProcessInput {
         }
         if (!numString.empty()) handleEndOfNum();
     }
-};
 
-class DoCalculations {
-    private:
-    vector<int> deletedIndexes;
-
-    int calculateShift(int index) {
-        int shift = 0;
-        bool hasBeenInserted = false;
-        for (int k = 0; k < deletedIndexes.size(); k++) {
-            if (deletedIndexes[k] <= index) shift++;
-            else {
-                deletedIndexes.insert(deletedIndexes.begin() + k, index + 1);
-                hasBeenInserted = true;
-                break;
-            }
-        }
-        if (!hasBeenInserted) {
-            deletedIndexes.push_back(index + 1);
-        }
-        return shift;
-    }
-
-    void doOperation(int realIndex, func_ptr operation) {
-        nums[realIndex] = operation(nums[realIndex], nums[realIndex + 1]);
-        nums.erase(nums.begin() + realIndex + 1);
-    }
-
-    public:
-    void doCalculations() {
-        for (int priority = ops.size() - 1; priority >= 0; priority--) {
-            for (auto&[index, operation] : ops[priority]) {
-                for (double n : nums) {
-                    cout << n << ' ';
-                }
-                cout << '\n';
-                int shift = calculateShift(index);
-                int realIndex = index - shift;
-                doOperation(realIndex, operation);
-            }
-        }
+    double doCalculations() {
+        DoCalculations::doCalculations();
+        return nums[0];
     }
 };
 
 int main() {
-    ProcessInput p;
-    DoCalculations d;
+    string input;
 
     cout << "Enter expression: \n";
     getline(cin, input);
+    InputHandler p(input);
     p.processInput();
-    d.doCalculations();
+    double answer = p.doCalculations();
     cout.precision(12);
-    cout << "answer: " << nums[0] << endl;
-    cout << "Press enter to exit";
-    cin.ignore();
+    cout << "answer: " << answer << endl;
+    waitForEnterKey();
     return 0;
 }
