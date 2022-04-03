@@ -1,6 +1,5 @@
 #include <iostream>
 #include <cmath>
-#include <map>
 #include <unordered_map>
 #include <string>
 #include <vector>
@@ -40,8 +39,8 @@ void throwError(string error) {
 
 class DoCalculations {
     protected:
-    vector<double> nums;
-    vector<map<int, func_ptr>> ops;
+    vector<double> nums; //All nums are listed in the order of the input
+    vector<vector<pair<int, func_ptr>>> ops; //1st dimension = priority, 2nd dimension = the index of the num and its operation
 
     private:
     vector<int> deletedIndexes;
@@ -100,7 +99,7 @@ class InputHandler : DoCalculations {
         {pow, 2}
     };
 
-    int opOrder = 0;
+    int numIndex = 0;
     bool rightAfterOp = true;
     bool rightAfterClosingParentheses = false;
 
@@ -108,23 +107,16 @@ class InputHandler : DoCalculations {
         switch (c) {
             case '+':
                 return add;
-                break;
             case '-':
                 return subtract;
-                break;
             case '*':
                 return multiply;
-                break;
             case '/':
                 return divide;
-                break;
             case '^':
                 return pow;
-                break;
-            default:
-                throwError(c + string(" is not a valid operation"));
-                break;
         }
+        return nullptr;
     }
 
     void handleEndOfNum() {
@@ -152,8 +144,8 @@ class InputHandler : DoCalculations {
 
     void addOperationToVector(func_ptr operation) {
         int priority = priorities.at(operation);
-        ops[priority][opOrder] = operation;
-        opOrder++;
+        ops[priority].push_back({numIndex, operation});
+        numIndex++;
         rightAfterOp = true;
         rightAfterClosingParentheses = false;
     }
@@ -163,7 +155,7 @@ class InputHandler : DoCalculations {
         for (i = 0; i < input.length(); i++) {
             if (isdigit(input[i]) || input[i] == '.') {
                 if (rightAfterClosingParentheses) {
-                    handleEndOfNum();
+                    handleEndOfNum(); //We handle end of num here because the multiplication would be low priority
                     addOperationToVector(multiply);
                 }
                 numString += input[i];
@@ -174,18 +166,17 @@ class InputHandler : DoCalculations {
                 continue;
             }
             if (rightAfterOp) {
-                if (input[i] == '-') {
+                if (input[i] == '-' || input[i] == '+') {
                     numString += input[i];
-                    continue;
-                }
-                if (input[i] == '+') {
+                    rightAfterOp = false;
                     continue;
                 }
                 if (input[i] == '(') {
                     increasePriority();
                     continue;
                 }
-                throwError(string("back to back operations, ") + input[i] + string(" is invalid"));
+                if (getOperation(input[i]) == nullptr) throwError(string("\"") + input[i] + string("\" is an invalid character"));
+                else throwError(string("back to back operations, \"") + input[i] + string("\" is invalid"));
             }
             if (input[i] == '(') {
                 if (!numString.empty()) {
@@ -200,9 +191,15 @@ class InputHandler : DoCalculations {
                 rightAfterClosingParentheses = true;
                 continue;
             }
+            //The only possibilities left are that input[i] is an operation or input[i] is invalid
+            if (numString == "-" || numString == "+") throwError(string("cannot do operation to \"") + numString + string("\""));
             if (!numString.empty()) handleEndOfNum();
             func_ptr operation = getOperation(input[i]);
-            addOperationToVector(operation);
+            if (operation != nullptr) {
+                addOperationToVector(operation);
+                continue;
+            }
+            throwError(string("\"") + input[i] + string("\" is an invalid character"));
         }
         if (!numString.empty()) handleEndOfNum();
     }
