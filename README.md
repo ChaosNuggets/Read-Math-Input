@@ -1,7 +1,7 @@
 # Read-Math-Input
 A program that reads math expressions and calculates the result
 
-## Compatability
+## Compatibility
 This only works with C++17 or later. Structured bindings = good
 
 ## Roadmap
