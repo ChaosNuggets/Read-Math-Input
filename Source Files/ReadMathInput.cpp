@@ -3,40 +3,13 @@
 #include <unordered_map>
 #include <string>
 #include <vector>
+#include "MathFunctions.hpp"
 
 using namespace std;
 
 typedef double (*func_ptr)(const double, const double);
 
 int i;
-
-double add(const double x, const double y) {
-    return x+y;
-}
-
-double subtract(const double x, const double y) {
-    return x-y;
-}
-
-double multiply(const double x, const double y) {
-    return x*y;
-}
-
-double divide(const double x, const double y) {
-    return x/y;
-}
-
-double sin(const double x, const double y) {
-    return sin(x);
-}
-
-double cos(const double x, const double y) {
-    return cos(x);
-}
-
-double tan(const double x, const double y) {
-    return tan(x);
-}
 
 void waitForEnterKey() {
     cout << "Press enter to exit";
@@ -65,7 +38,16 @@ class DoCalculations {
         {pow, true},
         {sin, false},
         {cos, false},
-        {tan, false}
+        {tan, false},
+        {csc, false},
+        {sec, false},
+        {cot, false},
+        {arcsin, false},
+        {arccos, false},
+        {arctan, false},
+        {arccsc, false},
+        {arcsec, false},
+        {arccot, false}
     };
 
     int calculateShift(int index, func_ptr operation) {
@@ -125,7 +107,39 @@ class InputHandler : DoCalculations {
         {pow, 2},
         {sin, 3},
         {cos, 3},
-        {tan, 3}
+        {tan, 3},
+        {csc, 3},
+        {sec, 3},
+        {cot, 3},
+        {arcsin, 3},
+        {arccos, 3},
+        {arctan, 3},
+        {arccsc, 3},
+        {arcsec, 3},
+        {arccot, 3}
+    };
+
+    const unordered_map<char, func_ptr> charToOp = {
+        {'+', add},
+        {'-', subtract},
+        {'*', multiply},
+        {'/', divide},
+        {'^', pow}
+    };
+
+    const unordered_map<string, func_ptr> stringToOp = {
+        {"sin", sin},
+        {"cos", cos},
+        {"tan", tan},
+        {"csc", csc},
+        {"sec", sec},
+        {"cot", cot},
+        {"arcsin", arcsin},
+        {"arccos", arccos},
+        {"arctan", arctan},
+        {"arccsc", arccsc},
+        {"arcsec", arcsec},
+        {"arccot", arccot}
     };
 
     int numIndex = 0;
@@ -133,24 +147,12 @@ class InputHandler : DoCalculations {
     bool rightAfterClosingParentheses = false;
 
     func_ptr getOperation(const char c) const {
-        const unordered_map<char, func_ptr> charToOp = {
-            {'+', add},
-            {'-', subtract},
-            {'*', multiply},
-            {'/', divide},
-            {'^', pow}
-        };
         //If not in hashmap, return nullptr, else return the pointer to the function
         if (charToOp.find(c) == charToOp.end()) return nullptr;
         return charToOp.at(c);
     }
 
     func_ptr getOperation(const string s) const {
-        const unordered_map<string, func_ptr> stringToOp = {
-            {"sin", sin},
-            {"cos", cos},
-            {"tan", tan}
-        };
         //If not in hashmap, return nullptr, else return the pointer to the function
         if (stringToOp.find(s) == stringToOp.end()) return nullptr;
         return stringToOp.at(s);
