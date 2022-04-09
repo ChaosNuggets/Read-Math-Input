@@ -26,6 +26,18 @@ double divide(const double x, const double y) {
     return x/y;
 }
 
+double sin(const double x, const double y) {
+    return sin(x);
+}
+
+double cos(const double x, const double y) {
+    return cos(x);
+}
+
+double tan(const double x, const double y) {
+    return tan(x);
+}
+
 void waitForEnterKey() {
     cout << "Press enter to exit";
     cin.ignore();
@@ -45,13 +57,25 @@ class DoCalculations {
     private:
     vector<int> deletedIndexes;
 
-    int calculateShift(int index) {
+    const unordered_map<func_ptr, bool> shouldDelete = {
+        {add, true},
+        {subtract, true},
+        {multiply, true},
+        {divide, true},
+        {pow, true},
+        {sin, false},
+        {cos, false},
+        {tan, false}
+    };
+
+    int calculateShift(int index, func_ptr operation) {
         int shift = 0;
         bool hasBeenInserted = false;
-        for (int k = 0; k < deletedIndexes.size(); k++) {
-            if (deletedIndexes[k] <= index) shift++;
+        for (auto it = deletedIndexes.begin(); it != deletedIndexes.end(); it++) {
+            if (*it <= index) shift++;
             else {
-                deletedIndexes.insert(deletedIndexes.begin() + k, index + 1); //Insert at index k 1+ the index because the num to the right gets deleted after calcultions
+                if (shouldDelete.at(operation))
+                    deletedIndexes.insert(it, index + 1); //Insert at index k 1+ the index because the num to the right gets deleted after calcultions
                 hasBeenInserted = true;
                 break;
             }
@@ -64,14 +88,17 @@ class DoCalculations {
 
     void doOperation(int realIndex, func_ptr operation) {
         nums[realIndex] = operation(nums[realIndex], nums[realIndex + 1]);
-        nums.erase(nums.begin() + realIndex + 1);
+        if (shouldDelete.at(operation))
+            nums.erase(nums.begin() + realIndex + 1);
     }
 
     protected:
     void doCalculations() {
         for (int priority = ops.size() - 1; priority >= 0; priority--) {
-            for (auto&[index, operation] : ops[priority]) {
-                int shift = calculateShift(index);
+            for (auto& [index, operation] : ops[priority]) {
+                // for (double number : nums) cout << number << ' ';
+                // cout << '\n';
+                int shift = calculateShift(index, operation);
                 int realIndex = index - shift;
                 doOperation(realIndex, operation);
             }
@@ -81,13 +108,12 @@ class DoCalculations {
 
 class InputHandler : DoCalculations {
     private:
-    string numString;
     string input;
 
     public:
     InputHandler(string input) {
         this->input = input;
-        ops.resize(3);
+        ops.resize(4);
     }
 
     private:
@@ -96,7 +122,10 @@ class InputHandler : DoCalculations {
         {subtract, 0},
         {multiply, 1},
         {divide, 1},
-        {pow, 2}
+        {pow, 2},
+        {sin, 3},
+        {cos, 3},
+        {tan, 3}
     };
 
     int numIndex = 0;
@@ -104,59 +133,79 @@ class InputHandler : DoCalculations {
     bool rightAfterClosingParentheses = false;
 
     func_ptr getOperation(const char c) const {
-        switch (c) {
-            case '+':
-                return add;
-            case '-':
-                return subtract;
-            case '*':
-                return multiply;
-            case '/':
-                return divide;
-            case '^':
-                return pow;
-        }
-        return nullptr;
+        const unordered_map<char, func_ptr> charToOp = {
+            {'+', add},
+            {'-', subtract},
+            {'*', multiply},
+            {'/', divide},
+            {'^', pow}
+        };
+        //If not in hashmap, return nullptr, else return the pointer to the function
+        if (charToOp.find(c) == charToOp.end()) return nullptr;
+        return charToOp.at(c);
     }
 
-    void handleEndOfNum() {
+    func_ptr getOperation(const string s) const {
+        const unordered_map<string, func_ptr> stringToOp = {
+            {"sin", sin},
+            {"cos", cos},
+            {"tan", tan}
+        };
+        //If not in hashmap, return nullptr, else return the pointer to the function
+        if (stringToOp.find(s) == stringToOp.end()) return nullptr;
+        return stringToOp.at(s);
+    }
+
+    void handleEndOfNum(string& numString) {
+        if (numString == "-" || numString == "+") {
+            throwError(string("cannot do operation to \"") + numString + string("\""));
+        }
         nums.push_back(stod(numString));
         numString.clear();
     }
 
     void increasePriority() {
-        for (auto&[operation, priority] : priorities) {
-            priority += 3;
+        for (auto& [operation, priority] : priorities) {
+            priority += 4;
         }
-        if (priorities.at(pow) > ops.size()-1) {
-            ops.resize(priorities.at(pow)+1);
+        if (priorities.at(sin) > ops.size()-1) {
+            ops.resize(priorities.at(sin)+1);
         }
     }
 
     void decreasePriority() {
-        if (priorities.at(add) - 3 < 0) {
+        if (priorities.at(add) - 4 < 0) {
             throwError(string("too many closing parentheses"));
         }
-        for (auto&[operation, priority] : priorities) {
-            priority -= 3;
+        for (auto& [operation, priority] : priorities) {
+            priority -= 4;
         }
     }
 
-    void addOperationToVector(func_ptr operation) {
+    void addFunctionToVector(func_ptr operation) {
         int priority = priorities.at(operation);
         ops[priority].push_back({numIndex, operation});
-        numIndex++;
         rightAfterOp = true;
         rightAfterClosingParentheses = false;
     }
 
+    void addOperationToVector(func_ptr operation) {
+        addFunctionToVector(operation);
+        numIndex++;
+    }
+
     public:
     void processInput() {
+        string numString;
+        string funcString;
         for (i = 0; i < input.length(); i++) {
             if (isdigit(input[i]) || input[i] == '.') {
                 if (rightAfterClosingParentheses) {
-                    handleEndOfNum(); //We handle end of num here because the multiplication would be low priority
+                    handleEndOfNum(numString); //We handle end of num here because the multiplication would be low priority
                     addOperationToVector(multiply);
+                }
+                if (!funcString.empty()) {
+                    throwError("You need to have an opening parentheses after a function");
                 }
                 numString += input[i];
                 rightAfterOp = false;
@@ -172,15 +221,30 @@ class InputHandler : DoCalculations {
                     continue;
                 }
                 if (input[i] == '(') {
+                    if (!funcString.empty()) {
+                        func_ptr operation = getOperation(funcString);
+                        if (operation != nullptr) {
+                            addFunctionToVector(operation);
+                        } else {
+                            throwError(string("\"") + funcString + string("\" is an invalid function"));
+                        }
+                        funcString.clear();
+                    }
                     increasePriority();
                     continue;
                 }
-                if (getOperation(input[i]) == nullptr) throwError(string("\"") + input[i] + string("\" is an invalid character"));
-                else throwError(string("back to back operations, \"") + input[i] + string("\" is invalid"));
+                if (isalpha(input[i])) {
+                    funcString += input[i];
+                    continue;
+                }
+                if (getOperation(input[i]) == nullptr)
+                    throwError(string("\"") + input[i] + string("\" is an invalid character"));
+                else 
+                    throwError(string("back to back operations, \"") + input[i] + string("\" is invalid"));
             }
             if (input[i] == '(') {
                 if (!numString.empty()) {
-                    handleEndOfNum();
+                    handleEndOfNum(numString);
                     addOperationToVector(multiply);
                 }
                 increasePriority();
@@ -191,9 +255,16 @@ class InputHandler : DoCalculations {
                 rightAfterClosingParentheses = true;
                 continue;
             }
+            if (isalpha(input[i])) {
+                if (!numString.empty()) {
+                    handleEndOfNum(numString);
+                    addOperationToVector(multiply);
+                }
+                funcString += input[i];
+                continue;
+            }
             //The only possibilities left are that input[i] is an operation or input[i] is invalid
-            if (numString == "-" || numString == "+") throwError(string("cannot do operation to \"") + numString + string("\""));
-            if (!numString.empty()) handleEndOfNum();
+            if (!numString.empty()) handleEndOfNum(numString);
             func_ptr operation = getOperation(input[i]);
             if (operation != nullptr) {
                 addOperationToVector(operation);
@@ -201,7 +272,7 @@ class InputHandler : DoCalculations {
             }
             throwError(string("\"") + input[i] + string("\" is an invalid character"));
         }
-        if (!numString.empty()) handleEndOfNum();
+        if (!numString.empty()) handleEndOfNum(numString);
     }
 
     double doCalculations() {
